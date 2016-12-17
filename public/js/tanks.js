@@ -7,9 +7,6 @@ var tank;
 var turret;
 var player;
 var tanksList;
-var enemyBullets;
-var enemiesTotal = 0;
-var enemiesAlive = 0;
 var explosions;
 
 var logo;
@@ -20,6 +17,60 @@ var cursors;
 var bullets;
 var fireRate = 100;
 var nextFire = 0;
+
+var ready = false;
+var eurecaServer;
+//this function will handle client communication with the server
+var eurecaClientSetup = function() {
+	//create an instance of eureca.io client
+	var eurecaClient = new Eureca.Client();
+	
+	eurecaClient.ready(function (proxy) {		
+		eurecaServer = proxy;
+	});
+	
+	
+	//methods defined under "exports" namespace become available in the server side
+	
+	eurecaClient.exports.setId = function(id) 
+	{
+		//create() is moved here to make sure nothing is created before uniq id assignation
+		myId = id;
+		create();
+		eurecaServer.handshake();
+		ready = true;
+	}	
+	
+	eurecaClient.exports.kill = function(id)
+	{	
+		if (tanksList[id]) {
+			tanksList[id].kill();
+			console.log('killing ', id, tanksList[id]);
+		}
+	}	
+	
+	eurecaClient.exports.spawnEnemy = function(i, x, y)
+	{
+		
+		if (i == myId) return; //this is me
+		
+		console.log('SPAWN');
+		var tnk = new Tank(i, game, tank);
+		tanksList[i] = tnk;
+	}
+	
+	eurecaClient.exports.updateState = function(id, state)
+	{
+		if (tanksList[id])  {
+			tanksList[id].cursor = state;
+			tanksList[id].tank.x = state.x;
+			tanksList[id].tank.y = state.y;
+			tanksList[id].tank.angle = state.angle;
+			tanksList[id].turret.rotation = state.rot;
+			tanksList[id].update();
+		}
+	}
+}
 
 
 Tank = function (index, game, player) {
@@ -79,9 +130,34 @@ Tank = function (index, game, player) {
 };
 
 Tank.prototype.update = function() {
-		
-	for (var i in this.input) this.cursor[i] = this.input[i];	
 	
+	var inputChanged = (
+		this.cursor.left != this.input.left ||
+		this.cursor.right != this.input.right ||
+		this.cursor.up != this.input.up ||
+		this.cursor.fire != this.input.fire
+	);
+	
+	
+	if (inputChanged)
+	{
+		//Handle input change here
+		//send new values to the server		
+		if (this.tank.id == myId)
+		{
+			// send latest valid state to the server
+			this.input.x = this.tank.x;
+			this.input.y = this.tank.y;
+			this.input.angle = this.tank.angle;
+			this.input.rot = this.turret.rotation;
+			
+			
+			eurecaServer.handleKeys(this.input);
+			
+		}
+	}
+
+	//cursor value is now updated by eurecaClient.exports.updateState method
 	
 	
     if (this.cursor.left)
@@ -118,7 +194,8 @@ Tank.prototype.update = function() {
 	else
 	{
 		game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
-	}	
+	}
+	
 	
 	
 	
@@ -151,7 +228,7 @@ Tank.prototype.kill = function() {
 	this.shadow.kill();
 }
 
-var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update, render: render });
+var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: eurecaClientSetup, update: update, render: render });
 
 function preload () {
 
@@ -221,6 +298,8 @@ function removeLogo () {
 }
 
 function update () {
+	//do not update if client not ready
+	if (!ready) return;
 	
 	player.input.left = cursors.left.isDown;
 	player.input.right = cursors.right.isDown;

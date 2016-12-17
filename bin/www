@@ -21,6 +21,15 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
+//get EurecaServer class
+var EurecaServer = require('eureca.io').EurecaServer;
+
+//create an instance of EurecaServer
+var eurecaServer = new EurecaServer();
+
+//attach eureca.io to our http server
+eurecaServer.attach(server);
+
 /**
  * Listen on provided port, on all network interfaces.
  */
