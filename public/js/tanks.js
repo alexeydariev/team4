@@ -31,6 +31,7 @@ var eurecaClientSetup = function() {
 	//create an instance of eureca.io client
 	var eurecaClient = new Eureca.Client();
 
+
 	eurecaClient.ready(function (proxy) {
 		eurecaServer = proxy;
 	});
@@ -51,7 +52,7 @@ var eurecaClientSetup = function() {
 	{
 		if (tanksList[id]) {
 			tanksList[id].kill();
-			console.log('killing ', id, tanksList[id]);
+			//console.log('killing ', id, tanksList[id]);
 		}
 	}
 
@@ -60,7 +61,7 @@ var eurecaClientSetup = function() {
 
 		if (i == myId) return; //this is me
 
-		console.log('SPAWN');
+	//	console.log('SPAWN');
 		var tnk = new Tank(i, game, tank);
 		tanksList[i] = tnk;
 	}
@@ -73,6 +74,7 @@ var eurecaClientSetup = function() {
 			tanksList[id].tank.y = state.y;
 			tanksList[id].tank.angle = state.angle;
 			tanksList[id].turret.rotation = state.rot;
+			tanksList[id].message = state.message;
 			tanksList[id].update();
 		}
 	}
@@ -98,7 +100,7 @@ Tank = function (index, game, player) {
     var y = 0;
 
     this.game = game;
-    this.health = 3;
+    this.health = 5;
     this.player = player;
     this.bullets = game.add.group();
     this.bullets.enableBody = true;
@@ -156,7 +158,8 @@ Tank.prototype.update = function() {
 			this.input.y = this.tank.y;
 			this.input.angle = this.tank.angle;
 			this.input.rot = this.turret.rotation;
-
+			this.input.message = "hello";
+			this.input.space = "space pressed";
 
 			eurecaServer.handleKeys(this.input);
 
@@ -165,6 +168,12 @@ Tank.prototype.update = function() {
 
 	//cursor value is now updated by eurecaClient.exports.updateState method
 
+		// Recieve other players stats
+		if (this.tank.id != myId && inputChanged)
+		{
+			//console.log(this.message)
+
+		}
 
     if (this.cursor.left)
     {
@@ -191,17 +200,14 @@ Tank.prototype.update = function() {
 		this.fire({x:this.cursor.tx, y:this.cursor.ty});
     }
 
-
-
     if (this.currentSpeed > 0)
     {
         game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
     }
-	else
-	{
-		game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
-	}
-
+		else
+		{
+			game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
+		}
 
 
 
@@ -232,8 +238,7 @@ Tank.prototype.damage = function() {
 
     if (this.health <= 0)
     {
-        this.alive = false;
-
+        //this.alive = false;
         this.shadow.kill();
         this.tank.kill();
         this.turret.kill();
@@ -246,7 +251,7 @@ Tank.prototype.damage = function() {
 }
 
 Tank.prototype.kill = function() {
-	this.alive = false;
+	//this.alive = false;
 	this.tank.kill();
 	this.turret.kill();
 	this.shadow.kill();
@@ -381,7 +386,7 @@ function create () {
 	//  Create some baddies to waste :)
 	enemies = [];
 
-	enemiesTotal = 20;
+	enemiesTotal = 0;
 	enemiesAlive = 20;
 
 	for (var i = 0; i < enemiesTotal; i++)
@@ -488,13 +493,7 @@ function bulletHitPlayer (tank, bullet) {
 
     bullet.kill();
 
-		var destroyed = player.damage();
-		console.log("=====================")
-		console.log(tank.id)
-		console.log(player);
-		console.log("=====================")
-		// player.alive = false
-		//
+		var destroyed = tanksList[tank.id].damage();
     if (destroyed)
     {
         var explosionAnimation = explosions.getFirstExists(false);
