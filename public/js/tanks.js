@@ -110,7 +110,7 @@ Tank = function (index, game, player) {
     this.bullets.setAll('checkWorldBounds', true);
 
 
-	this.currentSpeed =0;
+		this.currentSpeed =0;
     this.fireRate = 500;
     this.nextFire = 0;
     this.alive = true;
@@ -224,8 +224,26 @@ Tank.prototype.fire = function(target) {
 
 			bullet.rotation = this.game.physics.arcade.moveToObject(bullet, target, 500);
         }
-}
+};
 
+Tank.prototype.damage = function() {
+
+    this.health -= 1;
+
+    if (this.health <= 0)
+    {
+        this.alive = false;
+
+        this.shadow.kill();
+        this.tank.kill();
+        this.turret.kill();
+
+        return true;
+    }
+
+    return false;
+
+}
 
 Tank.prototype.kill = function() {
 	this.alive = false;
@@ -469,6 +487,20 @@ function update () {
 function bulletHitPlayer (tank, bullet) {
 
     bullet.kill();
+
+		var destroyed = player.damage();
+		console.log("=====================")
+		console.log(tank.id)
+		console.log(player);
+		console.log("=====================")
+		// player.alive = false
+		//
+    if (destroyed)
+    {
+        var explosionAnimation = explosions.getFirstExists(false);
+        explosionAnimation.reset(tank.x, tank.y);
+        explosionAnimation.play('kaboom', 30, false, true);
+    }
 }
 
 function bulletHitEnemy (tank, bullet) {
