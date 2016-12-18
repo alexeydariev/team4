@@ -14,9 +14,16 @@ var enemyBullets;
 var enemiesTotal = 0;
 var enemiesAlive = 0;
 
+var score = 0;
+var health = 50;
+
 var currentSpeed = 0;
 
 var logo;
+
+var button;
+var popup;
+var tween = null;
 
 var cursors;
 
@@ -26,6 +33,8 @@ var nextFire = 0;
 
 var ready = false;
 var eurecaServer;
+var platforms;
+
 //this function will handle client communication with the server
 var eurecaClientSetup = function() {
 	//create an instance of eureca.io client
@@ -96,11 +105,11 @@ Tank = function (index, game, player) {
 		fire:false
 	}
 
-    var x = 0;
-    var y = 0;
+    var x = game.world.randomX;
+    var y = game.world.randomY;
 
     this.game = game;
-    this.health = 5;
+    this.health = health;
     this.player = player;
     this.bullets = game.add.group();
     this.bullets.enableBody = true;
@@ -242,7 +251,6 @@ Tank.prototype.damage = function() {
         this.shadow.kill();
         this.tank.kill();
         this.turret.kill();
-
         return true;
     }
 
@@ -346,7 +354,13 @@ function preload () {
     game.load.image('bullet', 'assets/bullet.png');
     game.load.image('earth', 'assets/scorched_earth.png');
     game.load.spritesheet('kaboom', 'assets/explosion.png', 64, 64, 23);
+		game.load.image('ground_h', 'assets/platform_.png');
+		game.load.image('ground', 'assets/platform.png');
 
+		//Popup message
+		game.load.image('close', 'assets/restart.png', 193, 71);
+		game.load.image('background', 'assets/gameover.png');
+		//game.load.spritesheet('button', 'assets/button_sprite_sheet.png', 193, 71);
 }
 
 
@@ -354,12 +368,87 @@ function preload () {
 function create () {
 
     //  Resize our game world to be a 2000 x 2000 square
-    game.world.setBounds(-1000, -1000, 2000, 2000);
+    game.world.setBounds(0, 0, 1600, 1200);
 	game.stage.disableVisibilityChange  = true;
 
     //  Our tiled scrolling background
     land = game.add.tileSprite(0, 0, 1600, 1200, 'earth');
     land.fixedToCamera = true;
+
+		//button = game.add.button(game.world.centerX, game.world.centerY, 'button', openWindow, this, 2, 1, 0);
+    //button.input.useHandCursor = true;
+
+		// Popup txt = this.game.add.text(game.camera.width / 2, game.camera.height / 2, "Test", {font: "30px Arial", fill: "#ffffff", stroke: '#000000', strokeThickness: 3});txt.anchor.setTo(0.5, 0.5);txt.fixedToCamera = true;
+
+		popup = game.add.sprite(game.camera.width/2, game.camera.height/2, 'background');
+		popup.anchor.setTo(0.5, 0.5);
+		popup.fixedToCamera = true;
+		popup.alpha = 0.8;
+	  popup.visible = false;
+	  popup.inputEnabled = true;
+
+		//  Position the close button to the bottom-center of the popup sprite (minus 8px for spacing)
+    var pw = (popup.width / 2) - 450;
+    var ph = (popup.height / 2) - 250;
+
+			//  And click the close button to close it down again
+		 var closeButton = game.make.sprite(pw, -ph, 'close');
+		 closeButton.inputEnabled = true;
+		 closeButton.input.priorityID = 1;
+		 closeButton.input.useHandCursor = true;
+		 closeButton.events.onInputDown.add(closeWindow, this);
+
+
+		 var style = { font: "40px Arial", fill: "#ffffff", wordWrap: true, wordWrapWidth: popup.width, align: "center", backgroundColor: "#ffffff" };
+
+		 text = game.add.text(0, 0, "GAME OVER", style);
+     text.anchor.set(0.5);
+
+		 //  Add the "close button" to the popup window image
+		 popup.addChild(closeButton);
+		 popup.addChild(text);
+
+		 //  Hide it awaiting a click
+		 popup.scale.set(0.1);
+
+
+		game.physics.startSystem(Phaser.Physics.ARCADE);
+
+		platforms = game.add.group();
+
+		platforms.enableBody = true;
+
+		var ground_S = platforms.create(0, game.world.height - 64, 'ground');
+		var ground_N = platforms.create(0, 0, 'ground');
+		var ground_E = platforms.create(0, 0, 'ground_h');
+		var ground_V = platforms.create(game.world.width - 64, 0, 'ground_h');
+		var barrier1 = platforms.create(300, 200, 'ground_h');
+		var barrier2 = platforms.create(720, 150, 'ground_h');
+		var barrier3 = platforms.create(1000, 300, 'ground');
+		var barrier4 = platforms.create(1000, 1000, 'ground');
+
+		ground_S.scale.setTo(4, 2);
+		ground_N.scale.setTo(4, 2);
+		ground_E.scale.setTo(2, 4);
+		ground_V.scale.setTo(2, 4);
+
+		ground_S.body.allowGravity = false;
+		ground_N.body.allowGravity = false;
+		ground_E.body.allowGravity = false;
+		ground_V.body.allowGravity = false;
+		barrier1.body.allowGravity = false;
+		barrier2.body.allowGravity = false;
+		barrier3.body.allowGravity = false;
+		barrier4.body.allowGravity = false;
+
+		ground_S.body.immovable = true;
+		ground_N.body.immovable = true;
+		ground_E.body.immovable = true;
+		ground_V.body.immovable = true;
+		barrier1.body.immovable = true;
+		barrier2.body.immovable = true;
+		barrier3.body.immovable = true;
+		barrier4.body.immovable = true;
 
     tanksList = {};
 
@@ -367,10 +456,13 @@ function create () {
 	tanksList[myId] = player;
 	tank = player.tank;
 	turret = player.turret;
-	tank.x=0;
-	tank.y=0;
+	tank.x=game.world.randomX;
+	tank.y=game.world.randomY;
 	bullets = player.bullets;
 	shadow = player.shadow;
+
+	player.enableBody = true;
+    game.physics.arcade.enable(player);
 
 	//  The enemies bullet group
 	enemyBullets = game.add.group();
@@ -386,7 +478,7 @@ function create () {
 	//  Create some baddies to waste :)
 	enemies = [];
 
-	enemiesTotal = 0;
+	enemiesTotal = 20;
 	enemiesAlive = 20;
 
 	for (var i = 0; i < enemiesTotal; i++)
@@ -433,6 +525,11 @@ function update () {
 	//do not update if client not ready
 	if (!ready) return;
 
+	game.physics.arcade.collide(tank, platforms);
+	//game.physics.arcade.collide(enemies[tank.name], platforms);
+	//game.physics.arcade.collide(bullets, platforms)
+
+
 	//from original
 	game.physics.arcade.overlap(enemyBullets, tank, bulletHitPlayer, null, this);
 
@@ -445,6 +542,9 @@ function update () {
 					enemiesAlive++;
 					game.physics.arcade.collide(tank, enemies[i].tank);
 					game.physics.arcade.overlap(bullets, enemies[i].tank, bulletHitEnemy, null, this);
+					game.physics.arcade.collide(enemies[i].tank, platforms);
+					enemies[i].tank.body.bounce.set(1);
+
 					enemies[i].update();
 			}
 	}
@@ -492,6 +592,7 @@ function update () {
 function bulletHitPlayer (tank, bullet) {
 
     bullet.kill();
+		health -= 1;
 
 		var destroyed = tanksList[tank.id].damage();
     if (destroyed)
@@ -499,6 +600,8 @@ function bulletHitPlayer (tank, bullet) {
         var explosionAnimation = explosions.getFirstExists(false);
         explosionAnimation.reset(tank.x, tank.y);
         explosionAnimation.play('kaboom', 30, false, true);
+
+				game.time.events.add(Phaser.Timer.SECOND*0.2, openWindow, this);
     }
 }
 
@@ -513,6 +616,7 @@ function bulletHitEnemy (tank, bullet) {
         var explosionAnimation = explosions.getFirstExists(false);
         explosionAnimation.reset(tank.x, tank.y);
         explosionAnimation.play('kaboom', 30, false, true);
+				score = score + 10;
     }
 
 }
@@ -520,4 +624,34 @@ function bulletHitEnemy (tank, bullet) {
 function render () {
 	// game.debug.text('Active Bullets: ' + bullets.countLiving() + ' / ' + bullets.length, 32, 32);
 	game.debug.text('Enemies: ' + enemiesAlive + ' / ' + enemiesTotal, 32, 32);
+	game.debug.text('Your Score: ' + score, 32, 64);
+	game.debug.text('Your Health: ' + health, 32, 96);
+	//game.debug.text('Player ' + tanksList[tank.id] + ' score: ' + score, 32, 96);
+}
+
+function openWindow() {
+
+    if ((tween !== null && tween.isRunning) || popup.scale.x === 1)
+    {
+        return;
+    }
+
+    //  Create a tween that will pop-open the window, but only if it's not already tweening or open
+		popup.visible = true;
+    tween = game.add.tween(popup.scale).to( { x: 1, y: 1 }, 1000, Phaser.Easing.Elastic.Out, true);
+
+}
+
+function closeWindow() {
+
+    if (tween && tween.isRunning || popup.scale.x === 0.1)
+    {
+        return;
+    }
+
+    //  Create a tween that will close the window, but only if it's not already tweening or closed
+    tween = game.add.tween(popup.scale).to( { x: 0.1, y: 0.1 }, 500, Phaser.Easing.Elastic.In, true);
+		popup.visible = false;
+
+		//reset(x, y, health) → {PIXI.DisplayObject}
 }
