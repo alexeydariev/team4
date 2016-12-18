@@ -528,6 +528,15 @@ function update () {
 	game.physics.arcade.collide(tank, platforms);
 	//game.physics.arcade.collide(enemies[tank.name], platforms);
 	//game.physics.arcade.collide(bullets, platforms)
+	game.physics.arcade.collide(bullets, platforms, function(bullets, platforms) {
+		bullets.kill();
+	})
+	game.physics.arcade.collide(enemyBullets, platforms, function(bullets, platforms) {
+		bullets.kill();
+	})
+	// {
+	// 	bullet.kill();
+	// }
 
 
 	//from original
@@ -543,7 +552,8 @@ function update () {
 					game.physics.arcade.collide(tank, enemies[i].tank);
 					game.physics.arcade.overlap(bullets, enemies[i].tank, bulletHitEnemy, null, this);
 					game.physics.arcade.collide(enemies[i].tank, platforms);
-					enemies[i].tank.body.bounce.set(1);
+
+					//enemies[i].tank.body.bounce.set(1);
 
 					enemies[i].update();
 			}
